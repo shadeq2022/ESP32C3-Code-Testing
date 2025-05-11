@@ -42,6 +42,7 @@ const int FINGER_ON = 30000;  // Threshold IR untuk deteksi jari (sesuaikan jika
 
 // --- Fungsi Setup Sensor MAX30102 ---
 void setupMAX30102() {
+  Serial.println("Ini kode v2");
   Serial.println("Initializing MAX30102/5...");
   Wire.begin(); // Mulai I2C
   
