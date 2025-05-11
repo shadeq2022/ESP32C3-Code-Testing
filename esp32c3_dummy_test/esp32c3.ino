@@ -1,4 +1,4 @@
-// v1
+// version 1.0
 
 #include <BLEDevice.h>
 #include <BLEUtils.h>
