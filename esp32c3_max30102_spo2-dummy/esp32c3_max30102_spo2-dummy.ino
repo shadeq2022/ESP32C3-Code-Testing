@@ -1,5 +1,5 @@
+// v2.1
 // Kode untuk ESP32 yang terhubung ke nRF52840 dan Smartphone cuman spo2 dummy karna sensor max belum pasang
-// Kode ini menghilangkan fungsi spo2 (komentar saja)
 
 #include <BLEDevice.h>
 #include <BLEUtils.h>
