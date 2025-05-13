@@ -220,7 +220,7 @@ void setupBLEServer() {
                                          BLECharacteristic::PROPERTY_WRITE_NR // Optional: jika ingin smartphone bisa menulis sesuatu
                                        );
   // Anda bisa menambahkan descriptor di sini jika perlu (misal, CCCD untuk notifikasi)
-  // pWriteCharacteristic->addDescriptor(new BLE2902());                             
+  // pWriteCharacteristic->addDescriptor(new BLE2902());              
 
   // Mulai service
   pService->start();
