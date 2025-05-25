@@ -93,7 +93,7 @@ const double SPO2_FILTER_FACTOR = 0.7; // Faktor filter untuk memperhalus nilai 
 //----------------------------------------------------------------//
 bool isSpo2Stabilizing = false; // Flag menandakan apakah SpO2 sedang dalam periode stabilisasi
 unsigned long spo2StabilizationStartTime = 0; // Waktu dimulainya periode stabilisasi SpO2
-const unsigned long SPO2_STABILIZATION_PERIOD = 10000; // Durasi periode stabilisasi (10 detik)
+const unsigned long SPO2_STABILIZATION_PERIOD = 15000; // Durasi periode stabilisasi (15 detik)
 static double prevESpO2ForStabilization = 0.0; // Menyimpan nilai ESpO2 sebelumnya untuk deteksi awal bacaan valid
 
 //----------------------------------------------------------------//
@@ -638,14 +638,18 @@ void setupBleServerForPhone() {
 }
 
 void sendJsonToSmartphone() {
+    // Konversi status stabilisasi boolean ke integer (1 atau 0)
+    int stabilizationStatus = (isSpo2Stabilizing ? 1 : 0);
+
     // Buat string JSON dengan data sensor dan status
     String jsonData = "{\"status\":" + String(lastSnoreStatusFromNrf) +
                       ",\"timestamp\":" + String(lastTimestampFromNrf) +
                       ",\"spo2\":" + String(ESpO2, (ESpO2 == 100.0 || ESpO2 == 0.0 || ESpO2 == 80.0) ? 0 : 2) + // Format SpO2 dengan 0 atau 2 desimal
+                      ",\"stabilizing\":" + String(stabilizationStatus) + // Tambahkan status stabilisasi di sini
                       "}";
-    pCharacteristicPhone->setValue(jsonData.c_str()); // Set nilai karakteristik
+    pCharacteristicPhone->setValue(jsonData.c_str()); // Set nilai karakteristik [cite: 201]
     pCharacteristicPhone->notify(); // Kirim notifikasi ke Smartphone yang terhubung & subscribe
 
-    Serial.print("Terkirim ke smartphone: "); // Debug print
+    Serial.print("Terkirim ke smartphone: ");
     Serial.println(jsonData);
 }
