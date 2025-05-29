@@ -514,7 +514,7 @@ void manageActuators() {
 
     if (newDataFromNrf) { // Hanya cek jika ada data baru dari nRF
         if (lastSnoreStatusFromNrf == 1 && !prevSnoreStatusWasOneForMotor) {
-            if (!motorIsRunning) { // Hanya nyalakan jika motor tidak sedang dalam siklus 1 detiknya
+            if (!motorIsRunning) { // Hanya nyalakan jika motor tidak sedang dalam siklus 0,5 detiknya
                 motorIsRunning = true; // Set flag bahwa motor sedang berjalan
                 motorRunStartTime = currentTime; // Catat waktu motor mulai dinyalakan
                 digitalWrite(MOTOR_PIN, HIGH); // Nyalakan motor getar
