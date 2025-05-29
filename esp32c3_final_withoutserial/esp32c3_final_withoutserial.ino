@@ -21,8 +21,12 @@
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET); // Inisialisasi objek display OLED
 
 // Dimensi logo
-const int LOGO_WIDTH = 17;      // Lebar logo
-const int LOGO_HEIGHT = 17;     // Tinggi logo
+const int LOGO_WIDTH = 17;      // Lebar logo telepon
+const int LOGO_HEIGHT = 17;     // Tinggi logo telepon
+
+// Dimensi logo ZZZ (BARU)
+const int LOGO_ZZZ_WIDTH = 40;
+const int LOGO_ZZZ_HEIGHT = 17;
 
 // Status layar OLED
 #define SCREEN_PHONE_INFO 1     // Konstanta untuk layar info HP & Sensor
@@ -45,6 +49,17 @@ const unsigned char no_phone_logo[] PROGMEM = { // Data bitmap untuk logo telepo
     0x18, 0x00, 0x08, 0x28, 0x00, 0x08, 0x48, 0x00, 0x08, 0x88, 0x00, 0x09, 0x08, 0x00, 0x0a, 0x08,
     0x00, 0x0c, 0x08, 0x00, 0x0f, 0xf8, 0x00, 0x1e, 0x38, 0x00, 0x2f, 0xf8, 0x00, 0x4f, 0xf8, 0x00,
     0x80, 0x00, 0x00};
+
+// Bitmap logo ZZZ
+const unsigned char logo_zzz [] PROGMEM = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3f, 0xf0, 0x00, 
+	0x00, 0x00, 0x1f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x70, 0x00, 0x00, 0x00, 0x00, 0xe0, 0x00, 0x0f, 
+	0xfc, 0x01, 0x80, 0x00, 0x00, 0x3c, 0x03, 0x80, 0x00, 0x00, 0x70, 0x07, 0x00, 0x1f, 0xc1, 0xe0, 
+	0x0e, 0x00, 0x00, 0x81, 0x80, 0x1f, 0xf8, 0x01, 0x03, 0x80, 0x1f, 0xfc, 0x02, 0x07, 0x00, 0x00, 
+	0x00, 0x04, 0x07, 0xff, 0x80, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x1f, 0xc0, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x00
+};
+
 //----------------------------------------------------------------//
 //                           ACTUATOR DEFINITIONS                           //
 //----------------------------------------------------------------//
@@ -208,8 +223,6 @@ void setup() {
     pBLEScan->start(10, false); // Mulai scan BLE selama 10 detik, non-blocking (scan berlanjut di background)
     Serial.println("BLE Scan untuk nRF dimulai..."); // Cetak pesan bahwa scan BLE dimulai
 
-    // setupBleServerForPhone(); // MODIFIED: Call will be done in loop() after nRF connects
-
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, LOW); // Pastikan buzzer mati di awal
     pinMode(MOTOR_PIN, OUTPUT);
@@ -241,7 +254,6 @@ void loop() {
         bleClient_doConnectToNrf = false; // Reset flag permintaan koneksi ke nRF
     }
 
-    // MODIFIED: Start phone BLE server only after nRF is connected
     if (bleClient_nrfConnected && !phoneServerStarted) {
         Serial.println("nRF terhubung. Memulai BLE Server untuk Smartphone sekarang...");
         setupBleServerForPhone();
@@ -252,7 +264,6 @@ void loop() {
         oled_nrfConnected = bleClient_nrfConnected; // Update status koneksi nRF untuk OLED jika ada perubahan
         oledNeedsImmediateUpdate = true; 
     }
-    // Only try to sync phone status if its server has been started
     if (phoneServerStarted && (oled_phoneBLEConnected != bleServer_smartphoneConnected)) {
         oled_phoneBLEConnected = bleServer_smartphoneConnected; // Update status koneksi smartphone untuk OLED jika ada perubahan
         oledNeedsImmediateUpdate = true; 
@@ -277,6 +288,8 @@ void loop() {
             if (currentOledScreen != targetScreen) { // Jika layar berubah ke peringatan mendengkur
                 reasonToUpdateOLEDFromLogic = true; 
             }
+            // Untuk SCREEN_SNORING_ALERT, pembaruan periodik tidak diperlukan kecuali ada animasi
+            // Jika ingin pembaruan periodik, tambahkan kondisi 'else if' di sini
         } else { 
             targetScreen = SCREEN_PHONE_INFO; // Target kembali ke layar info SpO2
             if (currentOledScreen != targetScreen) { // Jika ada transisi dari NRF_PROMPT atau SNORING_ALERT
@@ -294,7 +307,6 @@ void loop() {
     }
 
     if (newDataFromNrf) { // Jika ada data baru dari nRF
-        // Only send if phone server has started and phone is connected
         if (phoneServerStarted && bleServer_smartphoneConnected) { 
             sendJsonToSmartphone(); // Panggil fungsi untuk mengirim data JSON ke smartphone
         } else {
@@ -314,56 +326,18 @@ void updateOledDisplay() {
     display.clearDisplay(); // Bersihkan buffer display OLED sebelum menggambar
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0); // Atur kursor ke posisi (0,0) (pojok kiri atas)
-    if (oled_nrfConnected) {
-        display.print(F("nrf=conect")); // Tampilkan status nRF terhubung
-    } else {
-        display.print(F("nrf=disconect")); // Tampilkan status nRF tidak terhubung
-    }
 
-    int logoX = SCREEN_WIDTH - LOGO_WIDTH; // Hitung posisi X untuk logo (kanan atas)
-    int logoY = 0;
-    if (oled_phoneBLEConnected) {
-        display.drawBitmap(logoX, logoY, phone1_logo, LOGO_WIDTH, LOGO_HEIGHT, SSD1306_WHITE); // Gambar logo telepon terhubung
-    } else {
-        display.drawBitmap(logoX, logoY, no_phone_logo, LOGO_WIDTH, LOGO_HEIGHT, SSD1306_WHITE); // Gambar logo telepon tidak terhubung
-    }
+    if (currentOledScreen == SCREEN_SNORING_ALERT) {
+        // --- BAGIAN BARU UNTUK LAYAR PERINGATAN MENDENGKUR ---
+        // Gambar logo ZZZ di tengah atas
+        int logoZzzX = (SCREEN_WIDTH - LOGO_ZZZ_WIDTH) / 2;
+        int logoZzzY = 0; // Atau sedikit margin dari atas jika diinginkan, misal 2 atau 3 piksel
+        display.drawBitmap(logoZzzX, logoZzzY, logo_zzz, LOGO_ZZZ_WIDTH, LOGO_ZZZ_HEIGHT, SSD1306_WHITE);
 
-    int textHeightApprox = 8; // Perkiraan tinggi teks default (ukuran 1)
-    int navbarY = max(LOGO_HEIGHT, textHeightApprox) + 2; // Hitung posisi Y garis pemisah di bawah logo/teks status
-    display.drawLine(0, navbarY, SCREEN_WIDTH, navbarY, SSD1306_WHITE);
-    int contentY = navbarY + 5; // Posisi Y untuk konten di bawah garis pemisah
+        // Posisi Y untuk konten teks di bawah logo ZZZ
+        int contentYSnoring = LOGO_ZZZ_HEIGHT + 5; // Beri jarak 5 piksel setelah logo
 
-    if (currentOledScreen == SCREEN_NRF_PROMPT) {
-        display.setTextSize(1); // Set ukuran teks untuk pesan prompt NRF
-        const char* nrfMsg1 = "Hidupkan nrf";
-        const char* nrfMsg2 = "terlebih dahulu!!";
-        int16_t x1_nrf, y1_nrf;
-        uint16_t w1_nrf, h1_nrf, w2_nrf, h2_nrf;
-        display.getTextBounds(nrfMsg1, 0, 0, &x1_nrf, &y1_nrf, &w1_nrf, &h1_nrf); // Dapatkan dimensi teks baris 1
-        display.getTextBounds(nrfMsg2, 0, 0, &x1_nrf, &y1_nrf, &w2_nrf, &h2_nrf); // Dapatkan dimensi teks baris 2
-
-        display.setCursor((SCREEN_WIDTH - w1_nrf) / 2, contentY + 10); // Atur kursor untuk centering teks baris 1
-        display.println(F("Hidupkan nrf")); // Tampilkan pesan baris pertama
-        display.setCursor((SCREEN_WIDTH - w2_nrf) / 2, contentY + 20); // Atur kursor untuk centering teks baris 2
-        display.println(F("terlebih dahulu!!")); // Tampilkan pesan baris kedua
-    } else if (currentOledScreen == SCREEN_PHONE_INFO) {
-        display.setTextSize(3); // Ukuran teks lebih besar untuk SpO2
-        display.setTextColor(SSD1306_WHITE);
-        String spo2Text;
-        if (ESpO2 == 0.0 && particleSensor.getFIFOIR() < FINGER_DETECT_THRESHOLD_IR) {
-            spo2Text = "--%"; // Teks jika SpO2 tidak valid atau jari tidak ada
-        } else {
-            spo2Text = String(ESpO2, (ESpO2 == 100.0 || ESpO2 == 0.0 || ESpO2 == 80.0) ? 0 : 1) + "%"; // Tampilkan nilai SpO2 dengan 0 desimal jika nilainya bulat (100, 0, 80) atau 1 desimal untuk lainnya
-        }
-
-        int16_t x1_spo2, y1_spo2;
-        uint16_t w_spo2, h_spo2;
-        display.getTextBounds(spo2Text, 0, 0, &x1_spo2, &y1_spo2, &w_spo2, &h_spo2); // Dapatkan dimensi teks SpO2
-        int spo2YPos = contentY + ((SCREEN_HEIGHT - contentY - h_spo2) / 2) ; // Posisi Y disesuaikan agar di tengah area konten di bawah navbar
-        display.setCursor((SCREEN_WIDTH - w_spo2) / 2, spo2YPos); // Atur kursor untuk centering teks SpO2
-        display.print(spo2Text);
-    } else if (currentOledScreen == SCREEN_SNORING_ALERT) {
+        // Tampilkan pesan peringatan mendengkur
         display.setTextSize(1); // Ukuran teks normal untuk pesan peringatan
         display.setTextColor(SSD1306_WHITE);
         const char* alertMsgL1 = "Snoring detected!";
@@ -374,12 +348,69 @@ void updateOledDisplay() {
         display.getTextBounds(alertMsgL1, 0, 0, &tempX, &tempY, &wL1, &hL1); // Dapatkan dimensi teks peringatan baris 1
         display.getTextBounds(alertMsgL2, 0, 0, &tempX, &tempY, &wL2, &hL2); // Dapatkan dimensi teks peringatan baris 2
 
+        // Hitung Posisi Y untuk baris pertama agar blok teks berada di tengah area di bawah logo ZZZ
         uint16_t totalTextHeight = hL1 + hL2 + 3; // Tinggi total dua baris + spasi kecil (3 piksel)
-        int textBlockY = contentY + ((SCREEN_HEIGHT - contentY - totalTextHeight) / 2);
+        // Area yang tersedia untuk teks: SCREEN_HEIGHT - contentYSnoring
+        int availableHeightForText = SCREEN_HEIGHT - contentYSnoring;
+        int textBlockY = contentYSnoring + (availableHeightForText - totalTextHeight) / 2;
+        
         display.setCursor((SCREEN_WIDTH - wL1) / 2, textBlockY); // Atur kursor untuk centering teks peringatan baris 1
         display.println(alertMsgL1);
         display.setCursor((SCREEN_WIDTH - wL2) / 2, textBlockY + hL1 + 3); // Posisikan baris kedua di bawah baris pertama + spasi
         display.println(alertMsgL2);
+
+    } else {
+        // --- BAGIAN LAMA UNTUK LAYAR NRF_PROMPT DAN PHONE_INFO ---
+        display.setCursor(0, 0); // Atur kursor ke posisi (0,0) (pojok kiri atas)
+        if (oled_nrfConnected) {
+            display.print(F("nrf=conect")); // Tampilkan status nRF terhubung
+        } else {
+            display.print(F("nrf=disconect")); // Tampilkan status nRF tidak terhubung
+        }
+
+        int logoX = SCREEN_WIDTH - LOGO_WIDTH; // Hitung posisi X untuk logo (kanan atas)
+        int logoY = 0;
+        if (oled_phoneBLEConnected) {
+            display.drawBitmap(logoX, logoY, phone1_logo, LOGO_WIDTH, LOGO_HEIGHT, SSD1306_WHITE); // Gambar logo telepon terhubung
+        } else {
+            display.drawBitmap(logoX, logoY, no_phone_logo, LOGO_WIDTH, LOGO_HEIGHT, SSD1306_WHITE); // Gambar logo telepon tidak terhubung
+        }
+
+        int textHeightApprox = 8; // Perkiraan tinggi teks default (ukuran 1)
+        int navbarY = max(LOGO_HEIGHT, textHeightApprox) + 2; // Hitung posisi Y garis pemisah di bawah logo/teks status
+        display.drawLine(0, navbarY, SCREEN_WIDTH, navbarY, SSD1306_WHITE);
+        int contentYDefault = navbarY + 5; // Posisi Y untuk konten di bawah garis pemisah
+
+        if (currentOledScreen == SCREEN_NRF_PROMPT) {
+            display.setTextSize(1); // Set ukuran teks untuk pesan prompt NRF
+            const char* nrfMsg1 = "Hidupkan nrf";
+            const char* nrfMsg2 = "terlebih dahulu!!";
+            int16_t x1_nrf, y1_nrf;
+            uint16_t w1_nrf, h1_nrf, w2_nrf, h2_nrf;
+            display.getTextBounds(nrfMsg1, 0, 0, &x1_nrf, &y1_nrf, &w1_nrf, &h1_nrf); // Dapatkan dimensi teks baris 1
+            display.getTextBounds(nrfMsg2, 0, 0, &x1_nrf, &y1_nrf, &w2_nrf, &h2_nrf); // Dapatkan dimensi teks baris 2
+
+            display.setCursor((SCREEN_WIDTH - w1_nrf) / 2, contentYDefault + 10); // Atur kursor untuk centering teks baris 1
+            display.println(F("Hidupkan nrf")); // Tampilkan pesan baris pertama
+            display.setCursor((SCREEN_WIDTH - w2_nrf) / 2, contentYDefault + 20); // Atur kursor untuk centering teks baris 2
+            display.println(F("terlebih dahulu!!")); // Tampilkan pesan baris kedua
+        } else if (currentOledScreen == SCREEN_PHONE_INFO) {
+            display.setTextSize(3); // Ukuran teks lebih besar untuk SpO2
+            display.setTextColor(SSD1306_WHITE);
+            String spo2Text;
+            if (ESpO2 == 0.0 && particleSensor.getFIFOIR() < FINGER_DETECT_THRESHOLD_IR) {
+                spo2Text = "--%"; // Teks jika SpO2 tidak valid atau jari tidak ada
+            } else {
+                spo2Text = String(ESpO2, (ESpO2 == 100.0 || ESpO2 == 0.0 || ESpO2 == 80.0) ? 0 : 1) + "%"; // Tampilkan nilai SpO2 dengan 0 desimal jika nilainya bulat (100, 0, 80) atau 1 desimal untuk lainnya
+            }
+
+            int16_t x1_spo2, y1_spo2;
+            uint16_t w_spo2, h_spo2;
+            display.getTextBounds(spo2Text, 0, 0, &x1_spo2, &y1_spo2, &w_spo2, &h_spo2); // Dapatkan dimensi teks SpO2
+            int spo2YPos = contentYDefault + ((SCREEN_HEIGHT - contentYDefault - h_spo2) / 2) ; // Posisi Y disesuaikan agar di tengah area konten di bawah navbar
+            display.setCursor((SCREEN_WIDTH - w_spo2) / 2, spo2YPos); // Atur kursor untuk centering teks SpO2
+            display.print(spo2Text);
+        }
     }
     display.display(); 
 }
@@ -514,7 +545,7 @@ void manageActuators() {
 
     if (newDataFromNrf) { // Hanya cek jika ada data baru dari nRF
         if (lastSnoreStatusFromNrf == 1 && !prevSnoreStatusWasOneForMotor) {
-            if (!motorIsRunning) { // Hanya nyalakan jika motor tidak sedang dalam siklus 0,5 detiknya
+            if (!motorIsRunning) { // Hanya nyalakan jika motor tidak sedang dalam siklus 1 detiknya
                 motorIsRunning = true; // Set flag bahwa motor sedang berjalan
                 motorRunStartTime = currentTime; // Catat waktu motor mulai dinyalakan
                 digitalWrite(MOTOR_PIN, HIGH); // Nyalakan motor getar
