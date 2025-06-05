@@ -109,7 +109,7 @@ const double SPO2_FILTER_FACTOR = 0.7; // Faktor filter untuk memperhalus nilai 
 //----------------------------------------------------------------//
 bool isSpo2Stabilizing = false; // Flag menandakan apakah SpO2 sedang dalam periode stabilisasi
 unsigned long spo2StabilizationStartTime = 0; // Waktu dimulainya periode stabilisasi SpO2
-const unsigned long SPO2_STABILIZATION_PERIOD = 15000; // Durasi periode stabilisasi (15 detik)
+const unsigned long SPO2_STABILIZATION_PERIOD = 20000; // Durasi periode stabilisasi (20 detik)
 static double prevESpO2ForStabilization = 0.0; // Menyimpan nilai ESpO2 sebelumnya untuk deteksi awal bacaan valid
 
 //----------------------------------------------------------------//
@@ -545,7 +545,7 @@ void manageActuators() {
 
     if (newDataFromNrf) { // Hanya cek jika ada data baru dari nRF
         if (lastSnoreStatusFromNrf == 1 && !prevSnoreStatusWasOneForMotor) {
-            if (!motorIsRunning) { // Hanya nyalakan jika motor tidak sedang dalam siklus 1 detiknya
+            if (!motorIsRunning) { // Hanya nyalakan jika motor tidak sedang dalam siklus 0,5 detiknya
                 motorIsRunning = true; // Set flag bahwa motor sedang berjalan
                 motorRunStartTime = currentTime; // Catat waktu motor mulai dinyalakan
                 digitalWrite(MOTOR_PIN, HIGH); // Nyalakan motor getar
